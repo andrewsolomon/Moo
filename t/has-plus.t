@@ -79,4 +79,57 @@ is(ClassyClass->new->f, 1, 'class attr');
 is(UsesTheRole2->new->f, 2, 'role attr with +');
 is(ExtendsTheClass->new->f, 3, 'class attr with +');
 
+my @packages;
+for my $cfg (['Lazy' => lazy => 1], ['']) {
+  my ($name, %cfg) = @$cfg;
+  eval qq{
+    {
+      package ${name}PlusRole;
+      use Moo::Role;
+      has '+attr' => (\%cfg, default => 1);
+      push \@packages, __PACKAGE__;
+    }
+    {
+      package ${name}AttrAndPlusRole;
+      use Moo::Role;
+      has attr => (is => 'ro', \%cfg, default => 2);
+      has '+attr' => (default => 1);
+      push \@packages, __PACKAGE__;
+    }
+    {
+      package ${name}CompletePlusRole;
+      use Moo::Role;
+      has '+attr' => (is => 'ro', \%cfg, default => 1);
+      push \@packages, __PACKAGE__;
+    }
+    {
+      package ${name}PlusAndPlusRole;
+      use Moo::Role;
+      has '+attr' => (is => 'ro', \%cfg, default => 2);
+      has '+attr' => (default => 1);
+      push \@packages, __PACKAGE__;
+    }
+    {
+      package ${name}AttrAfterPlusRole;
+      use Moo::Role;
+      has '+attr' => (default => 1);
+      has attr => (is => 'ro', \%cfg, default => 2);
+      push \@packages, __PACKAGE__;
+    }
+    1;
+  } or die $@;
+}
+
+for my $role (@packages) {
+  my $class = "ClassWith$role";
+  eval qq{
+    package $class;
+    use Moo;
+    has attr => (is => 'ro');
+    with '$role';
+    1;
+  } or die $@;
+  is $class->new->attr, 1, "correct value for $class";
+}
+
 done_testing;
